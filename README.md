@@ -1,185 +1,107 @@
-# Steiner-tree distance-query bounds in Lean
+# Tight bounds for sublinear metric Steiner tree, in Lean
 
-This project formalizes both main results of
-[`Submission/tight-main.tex`](../Submission/tight-main.tex): the distance-query
-lower bound and the randomized sublinear approximation algorithm. The manuscript's
-original text and its blue `\lean{...}` annotations about the lower-bound
-formalization are preserved.
+[![Lean build](https://github.com/vakiliana/sublinear-steiner-tree/actions/workflows/lean.yml/badge.svg)](https://github.com/vakiliana/sublinear-steiner-tree/actions/workflows/lean.yml)
 
-## Build
+In the metric Steiner tree problem, we are given an $n$-point metric space $(V, w)$ and a set $T \subseteq V$ of terminals, and we seek the smallest weight $\mathrm{OPT}$ of a tree that spans $T$ and may also use points of $V \setminus T$. In the distance-oracle model, the algorithm knows $V$ and $T$ upfront and may query any pair $\{u, v\}$ to learn $w(u, v)$; its cost is the number of queries. The minimum spanning tree on $T$ approximates $\mathrm{OPT}$ within a factor of $2$, and its weight can be estimated with $\widetilde{O}(n)$ queries, so the question is the query complexity of estimating $\mathrm{OPT}$ within a factor strictly below $2$.
 
-Lean and mathlib are pinned to **v4.35.0**. `lake-manifest.json` records the exact
-dependency revisions. With elan installed:
+This repository is a Lean 4 verification of the two theorems of **Tight Bounds for Sublinear Metric Steiner Tree** (*arXiv link to be added soon*), which together settle the question: the answer is $n^{3/2 \pm o(1)}$.
 
-```bash
-export PATH="$HOME/.elan/bin:$PATH"
-cd Formalization
+**Theorem (Upper bound).** There is an absolute constant $\eta_0 > 0$ and a randomized algorithm that, given an $n$-point instance, outputs with probability at least $2/3$ an estimate $\widehat{C}$ with $\mathrm{OPT} \le \widehat{C} \le (2 - \eta_0)\,\mathrm{OPT}$, using $\widetilde{O}(n^{3/2})$ distance queries and time.
+
+**Theorem (Lower bound).** For every $\eta \in (0,1)$ and every integer $s \ge 1$ there are constants $\kappa > 0$ and $n_0$ such that, for all $n \ge n_0$, every randomized algorithm that outputs on every $n$-point instance, with probability at least $2/3$, an estimate in $[\mathrm{OPT}, (2-\eta)\,\mathrm{OPT}]$ must make more than $\kappa \cdot n^{(3s+7)/(2s+5)}$ distance queries in expectation on some instance. Since $(3s+7)/(2s+5) = 3/2 - 1/(4s+10)$, estimation within any factor $2-\eta$ requires $\Omega(n^{3/2-\varepsilon})$ queries for every $\varepsilon > 0$, so the exponent $3/2$ is tight.
+
+## The lower bound
+
+The main statement is `SteinerLowerBound.lower_bound` in [`SteinerLowerBound/LowerBound.lean`](SteinerLowerBound/LowerBound.lean):
+
+```lean
+namespace SteinerLowerBound
+
+universe u
+
+/-- Every sufficiently large size admits a three-distance metric family with
+linear many terminals on which every successful randomized estimator needs
+`Ω(n^((3s+7)/(2s+5)))` expected distance queries. -/
+theorem lower_bound {η : ℝ} (hη : 0 < η) (hη₁ : η < 1) (s : ℕ) :
+    ∃ κ : ℝ, 0 < κ ∧ ∃ D : ℕ, 0 < D ∧ ∃ N : ℕ, ∀ n : ℕ, N ≤ n →
+      ∃ M : HardInstance η s n, M.Geometry D ∧ HardInstance.Hard.{u} M κ
+
+end SteinerLowerBound
+```
+
+The statement uses these definitions:
+
+* **Hard instances**: `HardInstance η s n` packages a constructed `n`-point instance; `HardInstance.optimum` is the actual minimum over selected Steiner vertices and spanning trees, not a surrogate cost expression.
+* **Geometry**: `M.Geometry D` proves that the instance is a genuine metric on exactly `n` points, that at least `n / D` of them are terminals, that the real distance oracle agrees with that metric exactly, and that every off-diagonal distance lies in `{ℓ, 1, 2}` with `1/n³ ≤ ℓ ≤ D³/n³`.
+* **Hardness**: `HardInstance.Hard M κ` quantifies over adaptive decision-tree algorithms with real-valued distance answers and estimates. Repeated queries are allowed; random seeds range over arbitrary measurable probability spaces (hence the universe parameter `u`), with only the query-count and output functions required measurable; expected query counts use the extended nonnegative integral, so infinite expectations are included. Success means `OPT ≤ estimate ≤ (2-η)·OPT` with probability at least `2/3` on every member of the family; the conclusion is that any such estimator makes more than `κ · n^((3s+7)/(2s+5))` expected queries on some member. The theorem is stated for every `s : ℕ`, so it covers in particular every integer `s ≥ 1` from the paper, and `Exponents.lowerExponent_eq` identifies the exponent with `3/2 - 1/(4s+10)`.
+
+For a fixed target exponent, `SteinerLowerBound.epsilon_lower_bound` (same file) gives the `Ω(n^(3/2-ε))` form:
+
+```lean
+theorem epsilon_lower_bound {η ε : ℝ}
+    (hη : 0 < η) (hη₁ : η < 1) (hε : 0 < ε) :
+    ∃ s : ℕ, 1 ≤ s ∧ ∃ κ : ℝ, 0 < κ ∧
+      ∃ D : ℕ, 0 < D ∧ ∃ N : ℕ, ∀ n : ℕ, N ≤ n →
+        ∃ M : HardInstance η s n, M.Geometry D ∧ HardInstance.HardExponent.{u} M κ (3 / 2 - ε)
+```
+
+[`LowerBound.lean`](SteinerLowerBound/LowerBound.lean) assembles the floored parameters, all-size padding, cost separation, and expected-query reduction; the transcript-indistinguishability core — the public metric comparison, adaptive screening, visible-star simulator, and adaptive moment matching — is in [`TranscriptBound.lean`](SteinerLowerBound/TranscriptBound.lean).
+
+## The upper bound
+
+The main statement is `SteinerUpperBound.upper_bound` in [`SteinerUpperBound/Main.lean`](SteinerUpperBound/Main.lean):
+
+```lean
+namespace SteinerUpperBound
+
+/-- The actual public-input metric-query algorithm beats factor two on every
+finite metric. Its optimization objective is the genuine Steiner minimum. -/
+theorem upper_bound {n length : ℕ} (I : Instance (Fin n))
+    (terminals : Vector (Fin n) length) (hinj : Function.Injective terminals.get)
+    (hT : Finset.univ.image terminals.get = I.terminals) :
+    (2 : ℝ) / 3 ≤ Code.valueProbability I.weight Code.emptyBits (algorithm terminals)
+      (GoodEstimate (2 - eta0) I.optimum)
+
+end SteinerUpperBound
+```
+
+The statement uses these definitions:
+
+* `algorithm` ([`SteinerUpperBound/Algorithm.lean`](SteinerUpperBound/Algorithm.lean)) — the actual randomized metric-query program. Its only input is the public terminal-label vector on `Fin n`; its logical query type is `Empty`, so every piece of metric-dependent information is obtained at run time through distance queries, including component exploration, reusable sampling, lazy random-order matching, and the finite MST/band evaluations.
+* `Instance` and `Instance.optimum` — an arbitrary finite metric instance and the genuine Steiner minimum: the least cost of a graph connecting the terminals, with any input point allowed as a Steiner vertex.
+* `eta0 = 1 / (2 · 10¹²)` — the proved approximation constant, and `GoodEstimate (2 - eta0) I.optimum` — the window `OPT ≤ estimate ≤ (2 - eta0) · OPT`.
+* `Code.valueProbability` — the probability, over the program's random seeds, that the output satisfies the predicate. The proof ([`ConcreteEstimator/Correctness.lean`](SteinerUpperBound/ConcreteEstimator/Correctness.lean)) establishes success probability at least `9/10`; the published statement weakens it to the paper's `2/3`. `upper_bound_original_probability` (same file as `upper_bound`) states the identical guarantee for the compiled program's own finite seed law.
+
+Resources are bounded on **every** execution, not only in expectation: `SteinerUpperBound.algorithm_query_time_bound` shows that both distance queries and charged ordinary work are at most `C · (n+1) · √(n+1) · (1 + ⌊log₂(n+2)⌋)^206` for a proved positive absolute constant `C`, i.e. `Õ(n^(3/2))`. The time model is the paper's unit-cost arithmetic RAM, including indexed memory operations and random sampling; this is not a bit-complexity or native Lean-evaluator runtime claim, and the explicit constants are conservative bookkeeping rather than a practical implementation. The program is assembled in [`ConcreteEstimator.lean`](SteinerUpperBound/ConcreteEstimator.lean), with the every-execution resource accounting in [`ConcreteEstimator/Complexity.lean`](SteinerUpperBound/ConcreteEstimator/Complexity.lean).
+
+## Relation to the manuscript
+
+Several auxiliary ingredients of the formal proofs are deliberately different from the manuscript's presentation; each is a *proved* replacement that yields the main theorems above, not an added assumption, and the manuscript's sharper auxiliary constants and bounds are not claimed to have been verified verbatim. In particular:
+
+* Moment-matched weight laws are constructed inductively from affine copies rather than through the interpolation identity's asymptotic coefficient estimates.
+* A direct Hellinger comparison replaces the relative-entropy hybrid and separate activation coupling, and the generic adaptive coupling uses matching order `s + 2` (the parameter choice still yields the stated exponent exactly).
+* A million discrete grid phases replace the continuous log-uniform shift, and an implemented cover/component-count quadrature proves the MST interval instead of citing an external estimator.
+* Second-moment (Chebyshev) bounds replace exponential concentration in several places, exact clipped-weight MST differences evaluate the band scores, and reusable sampling uses exact rational logistic odds with charged binary powering.
+* Constants are conservative throughout — e.g. `eta0 = 1/(2·10¹²)` and the logarithmic exponent `206`.
+
+## Axioms and audit
+
+The proofs use only Lean's standard foundational axioms:
+
+* `propext` — propositional extensionality
+* `Classical.choice` — the axiom of choice
+* `Quot.sound` — quotient soundness
+
+[`Audit.lean`](Audit.lean) prints the axioms of the main accuracy and resource theorems and checks the transitive axiom dependencies of every imported project declaration in both libraries, rejecting anything else — in particular any dependency on `sorryAx` or a custom axiom. The project contains no `sorry`, `admit`, custom axioms, or native proof-evaluation shortcuts. The [build workflow](.github/workflows/lean.yml) runs `lake build` and the axiom audit on every push and pull request; click the badge above for build logs.
+
+## Building
+
+Lean and mathlib are pinned to **v4.35.0** (`lean-toolchain`; `lake-manifest.json` records the exact dependency revisions). With elan installed, from the repository root:
+
+```
 lake exe cache get
 lake build
 lake env lean Audit.lean
 ```
 
-The cache command is only needed when obtaining dependencies on a fresh checkout.
-Build artifacts and downloaded dependencies live in the ignored `.lake/` directory.
-
-## Main results
-
-### Lower bound
-
-Import `SteinerLowerBound`.
-
-- `SteinerLowerBound.lower_bound`: for every `0 < eta < 1` and natural `s`,
-  positive constants exist such that, for every sufficiently large `n`, every
-  successful randomized `(2-eta)`-approximation estimator needs more than
-  `kappa * n^((3*s+7)/(2*s+5))` expected distance queries on some constructed
-  `n`-point metric.
-- `SteinerLowerBound.epsilon_lower_bound`: the corresponding
-  `Omega(n^(3/2-epsilon))` result for every positive `epsilon`.
-
-The first theorem includes, in particular, every integer `s >= 1` from the paper.
-`Exponents.lowerExponent_eq` identifies its exponent with
-`3/2 - 1/(4*s+10)`.
-
-The theorem constructs `HardInstance` families. Their `Geometry` property proves:
-
-- Exactly `n` points and between `n/D` and `n` terminals, for a fixed positive `D`.
-- Actual metric-space axioms and exact agreement of the real distance oracle
-  with that metric.
-- Every off-diagonal distance belongs to `{ell, 1, 2}`, with
-  `1/n^3 <= ell <= D^3/n^3`.
-
-`HardInstance.optimum` is the actual minimum over selected Steiner vertices and
-spanning trees, not a surrogate cost expression. Relabeling and far-center
-padding preserve that optimum by proved tree transformations.
-
-`HardInstance.Hard` quantifies over adaptive decision-tree algorithms with
-real-valued distance answers and estimates. Repeated queries are allowed.
-Random seeds range over arbitrary measurable probability spaces; only the
-query-count and output functions must be measurable. Expected query counts use
-the extended nonnegative integral, so infinite expectations are included.
-Success means `OPT <= estimate <= (2-eta)*OPT` with probability at least `2/3`
-on every member of the hard family. Consequently, an estimator correct on
-every metric must satisfy the lower bound.
-
-### Algorithmic upper bound
-
-Import `SteinerUpperBound`.
-
-- `SteinerUpperBound.algorithm`: the actual randomized metric-query estimator,
-  taking only the public terminal-label vector on `Fin n`.
-- `SteinerUpperBound.upper_bound`: for every genuine metric and valid injective
-  terminal enumeration, its output satisfies
-  `OPT <= estimate <= (2-eta0)*OPT` with probability at least `2/3`, where
-  `eta0 = 1/(2*10^12) > 0`.
-- `SteinerUpperBound.upper_bound_original_probability`: the same statement on
-  that exact program's original compiled-seed law.
-- `SteinerUpperBound.algorithm_query_time_bound`: on **every** execution,
-  both distance queries and charged ordinary work are at most
-  `C*(n+1)*sqrt(n+1)*(1+floor(log2(n+2)))^206`, for a proved positive absolute
-  constant `C`. Thus both are `O~(n^(3/2))`.
-
-The empty and singleton terminal cases return zero. `Instance.optimum` is the
-actual minimum cost of a graph connecting the terminals, allowing any input
-point as a Steiner vertex. The final theorem assumes neither accurate MST/band
-estimates nor saving, VO, performance, or resource certificates. All intermediate
-contracts are instantiated with their proved implementations.
-
-The program has logical query type `Empty`: the retained-set membership requests
-of its frontend are implemented by the actual private cached metric-query
-factory, not supplied by an additional oracle. Component exploration, reusable
-sampling, lazy random-order matching, finite MST/band evaluation, numerical
-setup, and failure clocks are all part of the causal query program.
-
-The time model is the manuscript's unit-cost arithmetic RAM, including indexed
-memory operations and random sampling. The theorem is not a bit-complexity or
-native Lean evaluator runtime claim. Its explicit constants and logarithmic
-powers are conservative, not intended as a practical implementation.
-
-## Proof organization
-
-### Lower bound
-
-[`LowerBound.lean`](SteinerLowerBound/LowerBound.lean) assembles the actual
-floored parameters, all-size padding, cost separation, and expected-query
-reduction. Its transcript estimate comes from
-[`TranscriptBound.lean`](SteinerLowerBound/TranscriptBound.lean), which combines
-the public metric comparison, four-way adaptive screening, implemented
-visible-star simulator, categorical replacement, and adaptive moment matching.
-The simulator's freshness, accessible-region bound, correctness before stopping,
-and overflow accounting are proved from its implementation.
-
-Several auxiliary arguments are deliberately different from the writeup:
-
-- Finite moment-matched weight laws are constructed inductively using affine
-  copies, rather than formalizing the writeup's interpolation construction
-  and its asymptotic coefficient estimates.
-- First-moment bounds give fixed small cost-gap failure probabilities; the
-  writeup's stronger exponential auxiliary estimates are not claimed here.
-- Direct tree-cost inequalities replace the exact profit identity.
-- A direct Hellinger comparison replaces the relative-entropy hybrid and
-  separate activation coupling.
-- The generic adaptive coupling uses matching order `s+2`; the parameter choice
-  still yields the stated exponent exactly.
-- The uniform filler-sparsity failure bound is `3/m^3`, sufficient for the
-  vanishing master error, rather than the writeup's stronger failure exponent.
-- Explicit floor inequalities and a fixed adjacent-size ratio replace some
-  asymptotic limit arguments.
-
-These are proved alternative ingredients for the complete main theorem, not
-unproved assumptions or identified counterexamples to the original arguments.
-The blue `\lean{...}` annotations in
-[`Submission/tight-main.tex`](../Submission/tight-main.tex) explain the reasons
-and give human-readable proofs, including the changed constants and matching
-order. In particular, the stronger original auxiliary statements are not
-claimed to have been verified verbatim.
-
-### Upper bound
-
-[`Algorithm.lean`](SteinerUpperBound/Algorithm.lean) fixes the public algorithm
-and resource constants; [`Main.lean`](SteinerUpperBound/Main.lean) publishes the
-unconditional approximation theorem. The actual program is assembled in
-[`ConcreteEstimator.lean`](SteinerUpperBound/ConcreteEstimator.lean), with
-correctness in
-[`ConcreteEstimator/Correctness.lean`](SteinerUpperBound/ConcreteEstimator/Correctness.lean)
-and every-execution bounds in
-[`ConcreteEstimator/Complexity.lean`](SteinerUpperBound/ConcreteEstimator/Complexity.lean).
-
-`Model`, `TreeGeometry`, `Structural`, and `NetworkLifting` establish the genuine
-optimization and structural inequalities. `QueryProgram`, `ComponentExplore`,
-`LocalAccess`, and `PortGraph` implement the causal query/memory interfaces.
-`Matching.Padded` proves the lazy matching runtime's value and weighted-access
-bounds internally. `SavingEstimator.Resources.performance` closes its
-original-seed good-event accounts with an explicit fixed constant and degree
-64; the final theorem does not take this property as a premise.
-
-Some upper-bound ingredients differ from the manuscript:
-
-- A million discrete phases replace the continuous log-uniform shift.
-  Their disjoint windows give the sufficient persistence failure bound `1/1000`.
-- An implemented cover/component-count quadrature proves the accurate MST
-  interval, rather than assuming an external MST-estimation algorithm.
-- Second-moment bounds replace exponential score concentration. The additional
-  inverse-confidence factors remain polynomial in logarithms.
-- Exact clipped-weight MST differences evaluate band benefits, and actual
-  small MST minima evaluate one-center costs. Projection uses the conservative
-  loss `65*rho+3*tau*a`.
-- Reusable sampling uses rational logistic odds and charged binary powering.
-  Lazy matching uses finite integer priorities, explicit collision errors,
-  and an internally proved polylogarithmic call/access bound.
-- Component/list operations have conservative additional polynomial cutoff
-  factors. Real paired work/disclosure clocks and restricted original-seed
-  expectations handle bad calibration, pool, and rank executions without
-  conditioning mistakes.
-
-These proved changes preserve the main approximation and `n^(3/2)` exponent,
-but do not assert the manuscript's sharper auxiliary constants or logarithmic
-bounds verbatim.
-
-## Trust audit
-
-`Audit.lean` prints the axioms of the main accuracy and resource theorems and
-checks the transitive axiom dependencies of every imported public and private
-project declaration in both libraries. It rejects anything except the standard
-Lean axioms `propext`, `Classical.choice`, and `Quot.sound`, including any
-dependency on `sorryAx` or a custom assumed lemma. The project contains no
-`sorry`, `admit`, custom axioms, or native proof-evaluation shortcuts.
+The cache step is only needed on a fresh checkout. Build artifacts and downloaded dependencies live in the ignored `.lake/` directory.
