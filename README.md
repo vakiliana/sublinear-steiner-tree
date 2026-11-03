@@ -4,7 +4,7 @@
 
 In the metric Steiner tree problem, we are given an $n$-point metric space $(V, w)$ and a set $T \subseteq V$ of terminals, and we seek the smallest weight $\mathrm{OPT}$ of a tree that spans $T$ and may also use points of $V \setminus T$. In the distance-oracle model, the algorithm knows $V$ and $T$ upfront and may query any pair $\{u, v\}$ to learn $w(u, v)$; its cost is the number of queries. The minimum spanning tree on $T$ approximates $\mathrm{OPT}$ within a factor of $2$, and its weight can be estimated with $\widetilde{O}(n)$ queries, so the question is the query complexity of estimating $\mathrm{OPT}$ within a factor strictly below $2$.
 
-This repository is a Lean 4 verification of the two theorems of **Tight Bounds for Sublinear Metric Steiner Tree** (*arXiv link to be added soon*), which together settle the question: the answer is $n^{3/2 \pm o(1)}$.
+This repository is a Lean 4 verification of the two theorems of **Tight Bounds for Sublinear Metric Steiner Tree** (*arXiv link to be added soon*), which together settle the question: the answer is $n^{3/2}$.
 
 **Theorem (Upper bound).** There is an absolute constant $\eta_0 > 0$ and a randomized algorithm that, given an $n$-point instance, outputs with probability at least $2/3$ an estimate $\widehat{C}$ with $\mathrm{OPT} \le \widehat{C} \le (2 - \eta_0)\,\mathrm{OPT}$, using $\widetilde{O}(n^{3/2})$ distance queries and time.
 
