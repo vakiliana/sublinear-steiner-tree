@@ -6,7 +6,7 @@ In the metric Steiner tree problem, we are given an $n$-point metric space $(V, 
 
 This repository is a Lean 4 verification of the two theorems of **Tight Bounds for Sublinear Metric Steiner Tree** (*arXiv link to be added soon*), which together settle the question: the answer is $n^{3/2}$.
 
-**Theorem (Upper bound).** There is an absolute constant $\eta_0 > 0$ and a randomized algorithm that, given an $n$-point instance, outputs with probability at least $2/3$ an estimate $\widehat{C}$ with $\mathrm{OPT} \le \widehat{C} \le (2 - \eta_0)\,\mathrm{OPT}$, using $\widetilde{O}(n^{3/2})$ distance queries and time.
+**Theorem (Upper bound).** There is an absolute constant $\eta_0 > 0$ and a randomized algorithm that, given an $n$-point instance, outputs with probability at least $2/3$ an estimate $C$ with $\mathrm{OPT} \le C \le (2 - \eta_0)\,\mathrm{OPT}$, using $\widetilde{O}(n^{3/2})$ distance queries and time.
 
 **Theorem (Lower bound).** For every $\eta \in (0,1)$ and every integer $s \ge 1$ there are constants $\kappa > 0$ and $n_0$ such that, for all $n \ge n_0$, every randomized algorithm that outputs on every $n$-point instance, with probability at least $2/3$, an estimate in $[\mathrm{OPT}, (2-\eta)\,\mathrm{OPT}]$ must make more than $\kappa \cdot n^{(3s+7)/(2s+5)}$ distance queries in expectation on some instance. Since $(3s+7)/(2s+5) = 3/2 - 1/(4s+10)$, estimation within any factor $2-\eta$ requires $\Omega(n^{3/2-\varepsilon})$ queries for every $\varepsilon > 0$, so the exponent $3/2$ is tight.
 
