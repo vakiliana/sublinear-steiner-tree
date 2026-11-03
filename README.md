@@ -74,16 +74,6 @@ The statement uses these definitions:
 
 Resources are bounded on **every** execution, not only in expectation: `SteinerUpperBound.algorithm_query_time_bound` shows that both distance queries and charged ordinary work are at most `C · (n+1) · √(n+1) · (1 + ⌊log₂(n+2)⌋)^206` for a proved positive absolute constant `C`, i.e. `Õ(n^(3/2))`. The time model is the paper's unit-cost arithmetic RAM, including indexed memory operations and random sampling; this is not a bit-complexity or native Lean-evaluator runtime claim, and the explicit constants are conservative bookkeeping rather than a practical implementation. The program is assembled in [`ConcreteEstimator.lean`](SteinerUpperBound/ConcreteEstimator.lean), with the every-execution resource accounting in [`ConcreteEstimator/Complexity.lean`](SteinerUpperBound/ConcreteEstimator/Complexity.lean).
 
-## Relation to the manuscript
-
-Several auxiliary ingredients of the formal proofs are deliberately different from the manuscript's presentation; each is a *proved* replacement that yields the main theorems above, not an added assumption, and the manuscript's sharper auxiliary constants and bounds are not claimed to have been verified verbatim. In particular:
-
-* Moment-matched weight laws are constructed inductively from affine copies rather than through the interpolation identity's asymptotic coefficient estimates.
-* A direct Hellinger comparison replaces the relative-entropy hybrid and separate activation coupling, and the generic adaptive coupling uses matching order `s + 2` (the parameter choice still yields the stated exponent exactly).
-* A million discrete grid phases replace the continuous log-uniform shift, and an implemented cover/component-count quadrature proves the MST interval instead of citing an external estimator.
-* Second-moment (Chebyshev) bounds replace exponential concentration in several places, exact clipped-weight MST differences evaluate the band scores, and reusable sampling uses exact rational logistic odds with charged binary powering.
-* Constants are conservative throughout — e.g. `eta0 = 1/(2·10¹²)` and the logarithmic exponent `206`.
-
 ## Axioms and audit
 
 The proofs use only Lean's standard foundational axioms:
