@@ -1,6 +1,6 @@
 # Tight bounds for sublinear metric Steiner tree, in Lean
 
-[![Lean build](https://github.com/vakiliana/sublinear-steiner-tree/actions/workflows/lean.yml/badge.svg)](https://github.com/vakiliana/sublinear-steiner-tree/actions/workflows/lean.yml)
+[![Lean build](https://github.com/vakiliana/sublinear-steiner-tree/actions/workflows/main.yml/badge.svg)](https://github.com/vakiliana/sublinear-steiner-tree/actions/workflows/main.yml)
 
 In the metric Steiner tree problem, we are given an $n$-point metric space $(V, w)$ and a set $T \subseteq V$ of terminals, and we seek the smallest weight $\mathrm{OPT}$ of a tree that spans $T$ and may also use points of $V \setminus T$. In the distance-oracle model, the algorithm knows $V$ and $T$ upfront and may query any pair $\{u, v\}$ to learn $w(u, v)$; its cost is the number of queries. The minimum spanning tree on $T$ approximates $\mathrm{OPT}$ within a factor of $2$, and its weight can be estimated with $\widetilde{O}(n)$ queries, so the question is the query complexity of estimating $\mathrm{OPT}$ within a factor strictly below $2$.
 
